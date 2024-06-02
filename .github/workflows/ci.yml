@@ -121,14 +121,16 @@ jobs:
 
       # Upload the various reports to SonarCloud
       - name: Upload report to SonarCloud
+        id: coverage_report
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: ./gradlew sonarqube --parallel --build-cache
+        run: ./gradlew sonar --parallel --build-cache
 
       # Sign the APK
       - name: Sign app APK
-        uses: r0adkll/sign-android-release@v1
+        if: github.event_name == 'workflow_dispatch' && steps.coverage_report.conclusion == 'success'
+        uses: filippoLeporati93/android-release-signer@v1
         id: sign_app
         with:
           releaseDirectory: app/build/outputs/apk/release
@@ -141,7 +143,8 @@ jobs:
 
       # Upload the signed APK as an artifact
       - name: Upload signed APK
-        uses: actions/upload-artifact@v2
+        if: github.event_name == 'workflow_dispatch' && steps.sign_app.conclusion == 'success'
+        uses: actions/upload-artifact@v4.3.3
         with:
           name: Signed app APK
           path: ${{ steps.sign_app.outputs.signedReleaseFile }}
